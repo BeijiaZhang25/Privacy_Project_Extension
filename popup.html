@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Privacy Loss Dashboard</title>
+    <!-- ✅ Load Chart.js -->
+    <script src="chart.js"></script>
+    <!-- ✅ Load your script AFTER Chart.js -->
+    <script src="popup.js" defer></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        width: 350px;
+      }
+      #chartContainer {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Privacy Loss per Week</h2>
+    <div id="chartContainer">
+      <canvas id="privacyChart" width="300" height="250"></canvas>
+    </div>
+  </body>
+</html>
