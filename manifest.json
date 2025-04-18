@@ -7,5 +7,5 @@
     "default_popup": "popup.html",
     "default_title": "Open Dashboard"
   },
-  "permissions": []
+  "permissions": ["tabs"]
 }
