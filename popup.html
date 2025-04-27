@@ -9,28 +9,38 @@
       body {
         font-family: Arial, sans-serif;
         padding: 15px;
-        width: 600px;
-        max-height: 300px;
-        overflow: hidden; /* Prevent scrolling */
+        width: 900px;
+        max-height: 700px;
+        overflow: auto;
       }
       #chartContainer {
         display: flex;
-        justify-content: space-between;
+        flex-wrap: wrap;
+        justify-content: space-around;
         width: 100%;
       }
       .chart-item {
-        width: 48%;
+        width: 45%;
+        margin-bottom: 20px;
+      }
+      h2 {
+        text-align: center;
+        font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        font-weight: 300;
       }
     </style>
   </head>
   <body>
-    <h2 style="text-align: center; font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif; font-weight: 300;">Privacy loss this week:</h2>
+    <h2>Privacy loss this week:</h2>
     <div id="chartContainer">
       <div class="chart-item">
-        <canvas id="CollusionChart" width="280" height="220"></canvas>
+        <canvas id="CollusionChart"></canvas>
       </div>
       <div class="chart-item">
-        <canvas id="QuotaChart" width="280" height="220"></canvas>
+        <canvas id="ConvQuotaChart"></canvas>
+      </div>
+      <div class="chart-item">
+        <canvas id="ImplQuotaChart"></canvas>
       </div>
     </div>
   </body>

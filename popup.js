@@ -7,7 +7,6 @@ const FILTER_CAPACITIES = {
 };
 
 // == graph utils ==
-
 const drawChart = (
   canvasId,
   xAxisTitle,
@@ -71,7 +70,7 @@ const drawChart = (
       scales: {
         y: {
           beginAtZero: true,
-          max: FILTER_CAPACITIES["C"],
+          max: Math.max(leftLineY, rightLineY),
           title: { display: true, text: "Privacy Loss" },
         },
         x: {
@@ -86,42 +85,15 @@ const drawChart = (
 const DAY_IN_MILLI = 1000 * 60 * 60 * 24;
 const EPOCH_DURATION = 7 * DAY_IN_MILLI;
 
-/**
- * @returns {number} today's epoch number
- */
 const getEpochNow = () => {
   const now = Date.now();
   return Math.floor(now / EPOCH_DURATION);
 };
 
-/**
- * @param {number} epochNumber - The epoch number to convert
- * @returns {Object} Object containing first/last days of the epoch
- */
-const getEpochDateRange = (epochNumber) => {
-  const startTimestamp = epochNumber * EPOCH_DURATION;
-  const endTimestamp = startTimestamp + EPOCH_DURATION - 1;
-
-  const firstDate = new Date(startTimestamp);
-  const lastDate = new Date(endTimestamp);
-
-  return {
-    firstDate,
-    lastDate,
-    // formatted strings
-    firstDateStr: firstDate.toLocaleDateString(undefined, {
-      month: "long",
-      day: "numeric",
-    }),
-    lastDateStr: lastDate.toLocaleDateString(undefined, {
-      month: "long",
-      day: "numeric",
-    }),
-  };
-};
-
 const drawCollusionChart = () => {
-  const ncWebsites = ["www.nike.com", "www.toys.com"];
+  const ncWebsites = ["www.nike.com", "www.toys.com", "www.amazon.com",
+    "www.bestbuy.com",
+    "www.target.com"];
   const epochNow = getEpochNow();
 
   const cValue =
@@ -133,7 +105,6 @@ const drawCollusionChart = () => {
 
   const rightValues = {};
   for (website of ncWebsites) {
-    // strip off www. for brievity
     const baseUrl = website.replace("www.", "");
     const label = `per-site[${baseUrl}]`;
 
@@ -154,17 +125,14 @@ const drawCollusionChart = () => {
   );
 };
 
-const drawQuotaChart = (uri) => {
+const drawConvQuotaChart = () => {
   const epochNow = getEpochNow();
-
-  // left = qConv = qTrigger
-  // right = qImpl = qSource
-  const qConvWebsites = ["www.nike.com", "www.toys.com"];
-  const qImplWebsites = ["www.nytimes.com", "www.blog.com"];
+  const qConvWebsites = ["www.nike.com", "www.toys.com", "www.amazon.com",
+    "www.bestbuy.com",
+    "www.target.com"];
 
   const leftValues = {};
   for (website of qConvWebsites) {
-    // strip off www. for brievity
     const baseUrl = website.replace("www.", "");
     const label = `conv-quota[${baseUrl}]`;
 
@@ -173,9 +141,27 @@ const drawQuotaChart = (uri) => {
       navigator.privateAttribution.getBudget("QTrigger", epochNow, website);
   }
 
+  drawChart(
+    "ConvQuotaChart",
+    "Conversion Quota",
+    leftValues,
+    "orange",
+    FILTER_CAPACITIES["QTrigger"],
+    {},
+    "transparent",
+    0
+  );
+};
+
+const drawImplQuotaChart = () => {
+  const epochNow = getEpochNow();
+  const qImplWebsites = ["www.nytimes.com", "www.blog.com",
+    "www.cnn.com",
+    "www.techcrunch.com",
+    "www.reddit.com"];
+
   const rightValues = {};
   for (website of qImplWebsites) {
-    // strip off www. for brievity
     const baseUrl = website.replace("www.", "");
     const label = `impl-quota[${baseUrl}]`;
 
@@ -185,69 +171,18 @@ const drawQuotaChart = (uri) => {
   }
 
   drawChart(
-    "QuotaChart",
-    "Quota Filters",
-    leftValues,
-    "orange",
-    FILTER_CAPACITIES["QTrigger"],
+    "ImplQuotaChart",
+    "Impression Quota",
+    {},
+    "transparent",
+    0,
     rightValues,
     "purple",
     FILTER_CAPACITIES["QSource"]
   );
 };
 
-/**
- *
- * @param {string} filterType
- * @param {Array<number>} epochs
- * @returns
- */
-const getDataAndDrawGraph = (filterType, epochs, uri) => {
-  if (!["Nc", "C", "QTrigger", "QSource"].includes(filterType)) {
-    console.error("Invalid filter type:", filterType);
-    return;
-  }
-
-  const data = {};
-  for (const epoch of epochs) {
-    let budget = navigator.privateAttribution.getBudget(filterType, epoch, uri);
-    if (budget === -1.0) {
-      console.warn("Budget is null for epoch:", epoch);
-      budget = 0.0;
-    }
-
-    data[epoch] = FILTER_CAPACITIES[filterType] - budget;
-  }
-
-  drawChart(filterType, epochs, data);
-};
-
-// note: unused for now
-const getCurrentUri = () => {
-  return new Promise((resolve, reject) => {
-    browser.tabs
-      .query({ active: true, currentWindow: true })
-      .then((tabs) => {
-        if (tabs.length === 0) {
-          reject(new Error("No active tab found"));
-          return;
-        }
-
-        const url = new URL(tabs[0].url);
-        resolve(url.hostname);
-      })
-      .catch((error) => {
-        reject(error);
-      });
-  });
-};
-
 const generateMockEvents = () => {
-  /* Idea/story:
-   * the user has see ads for many products (nike.com, toys.com...)
-   * on many other sites (nytimes.com, blog.com...)
-   */
-
   const sourceUris = [
     "www.nytimes.com",
     "www.blog.com",
@@ -298,7 +233,7 @@ const generateMockEvents = () => {
 
 document.addEventListener("DOMContentLoaded", async () => {
   generateMockEvents();
-
   drawCollusionChart();
-  drawQuotaChart();
+  drawConvQuotaChart();
+  drawImplQuotaChart();
 });
