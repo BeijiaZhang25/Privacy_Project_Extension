@@ -182,58 +182,139 @@ const drawImplQuotaChart = () => {
   );
 };
 
-const generateMockEvents = () => {
+
+
+const generateMockEvents = (weeksToShow = 4) => {
   const sourceUris = [
-    "www.nytimes.com",
-    "www.blog.com",
-    "www.cnn.com",
-    "www.techcrunch.com",
-    "www.reddit.com",
-    "www.medium.com",
-    "www.quora.com",
+    "www.nytimes.com", "www.blog.com", "www.cnn.com",
+    "www.techcrunch.com", "www.reddit.com", "www.medium.com", "www.quora.com"
   ];
-  const randomSourceUri = () =>
-    sourceUris[Math.floor(Math.random() * sourceUris.length)];
 
   const triggerUris = [
-    "www.nike.com",
-    "www.toys.com",
-    "www.amazon.com",
-    "www.bestbuy.com",
-    "www.target.com",
-    "www.homedepot.com",
-    "www.sephora.com",
-    "www.etsy.com",
+    "www.nike.com", "www.toys.com", "www.amazon.com",
+    "www.bestbuy.com", "www.target.com", "www.homedepot.com",
+    "www.sephora.com", "www.etsy.com"
   ];
-  const randomTriggerUri = () =>
-    triggerUris[Math.floor(Math.random() * triggerUris.length)];
 
   const epochNow = getEpochNow();
 
-  navigator.privateAttribution.clearEvents();
+  navigator.privateAttribution.clearEvents();  // Clear before generating
 
-  for (let i = 0; i < 10; i++) {
-    const sourceUri = randomSourceUri();
-    const triggerUri = randomTriggerUri();
+  for (let weekOffset = 0; weekOffset < weeksToShow; weekOffset++) {
+    const epoch = epochNow - weekOffset;
 
-    navigator.privateAttribution.addMockEvent(
-      epochNow,
-      sourceUri,
-      [triggerUri],
-      [triggerUri]
-    );
-  }
+    const eventsCount = weekOffset === 0 ? 10 : 5;
 
-  for (const triggerUri of triggerUris) {
-    navigator.privateAttribution.computeReportFor(triggerUri, sourceUris, [
-      triggerUri,
-    ]);
+    for (let i = 0; i < eventsCount; i++) {
+      const sourceUri = sourceUris[Math.floor(Math.random() * sourceUris.length)];
+      const triggerUri = triggerUris[Math.floor(Math.random() * triggerUris.length)];
+
+      navigator.privateAttribution.addMockEvent(epoch, sourceUri, [triggerUri], [triggerUri]);
+    }
+
+    for (const triggerUri of triggerUris) {
+      navigator.privateAttribution.computeReportFor(triggerUri, sourceUris, [triggerUri]);
+    }
   }
 };
 
+
+
+
+
+
+
+const getEpochDateRange = (epoch) => {
+  const startDate = new Date(epoch * EPOCH_DURATION);
+  const endDate = new Date(startDate.getTime() + EPOCH_DURATION - 1);
+
+  const formatDate = (date) =>
+    `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+
+  return {
+    firstDateStr: formatDate(startDate),
+    lastDateStr: formatDate(endDate),
+  };
+};
+
+const drawWeeklyPrivacyLossChart = () => {
+  const weeksToShow = 4;
+  const epochNow = getEpochNow();
+
+  const labels = [];
+  const ncData = [];
+  const cData = [];
+  const qTriggerData = [];
+  const qSourceData = [];
+
+  for (let i = weeksToShow - 1; i >= 0; i--) {
+    const epoch = epochNow - i;
+    const { firstDateStr, lastDateStr } = getEpochDateRange(epoch);
+    labels.push(`${firstDateStr} - ${lastDateStr}`);
+
+    if (i === 0) {
+      // Current week - real data
+      ncData.push(FILTER_CAPACITIES["Nc"] - navigator.privateAttribution.getBudget("Nc", epoch, "www.nike.com"));
+      cData.push(FILTER_CAPACITIES["C"] - navigator.privateAttribution.getBudget("C", epoch, ""));
+      qTriggerData.push(FILTER_CAPACITIES["QTrigger"] - navigator.privateAttribution.getBudget("QTrigger", epoch, "www.nike.com"));
+      qSourceData.push(FILTER_CAPACITIES["QSource"] - navigator.privateAttribution.getBudget("QSource", epoch, "www.nytimes.com"));
+    } else {
+      // Past weeks - simulate realistic data
+      ncData.push((Math.random() * FILTER_CAPACITIES["Nc"]).toFixed(2));
+      cData.push((Math.random() * FILTER_CAPACITIES["C"]).toFixed(2));
+      qTriggerData.push((Math.random() * FILTER_CAPACITIES["QTrigger"]).toFixed(2));
+      qSourceData.push((Math.random() * FILTER_CAPACITIES["QSource"]).toFixed(2));
+    }
+  }
+
+  const ctx = document.getElementById("WeeklyPrivacyLossChart").getContext("2d");
+
+  const maxY = Math.max(...ncData, ...cData, ...qTriggerData, ...qSourceData) + 1;
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'nc-filter', data: ncData, backgroundColor: '#4F81BD' },
+        { label: 'c-filter', data: cData, backgroundColor: '#5DA5DA' },
+        { label: 'q-trigger', data: qTriggerData, backgroundColor: '#60BD68' },
+        { label: 'q-source', data: qSourceData, backgroundColor: '#B2E061' }
+      ]
+    },
+    options: {
+      responsive: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Privacy Loss per Week'
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: maxY,
+          title: { display: true, text: "Privacy Loss" }
+        },
+        x: {
+          title: { display: true, text: "Week" }
+        }
+      }
+    }
+  });
+};
+
+
 document.addEventListener("DOMContentLoaded", async () => {
-  generateMockEvents();
+  navigator.privateAttribution.clearEvents();   // Clear once
+
+  generateMockEvents(4);   // Generate events for current + past 3 weeks
+
+  // First three charts focus on current week
   drawCollusionChart();
   drawConvQuotaChart();
   drawImplQuotaChart();
+
+  // Weekly chart reads across past 4 epochs
+  drawWeeklyPrivacyLossChart();
 });

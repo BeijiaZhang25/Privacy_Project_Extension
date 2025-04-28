@@ -6,6 +6,9 @@
     <script src="chartjs-plugin-annotation.min.js"></script>
     <script src="popup.js" defer></script>
     <style>
+      canvas {
+    display: block;
+  }
       body {
         font-family: Arial, sans-serif;
         padding: 15px;
@@ -20,9 +23,10 @@
         width: 100%;
       }
       .chart-item {
-        width: 45%;
-        margin-bottom: 20px;
-      }
+    min-width: 45%;
+    margin-bottom: 20px;
+    text-align: center;
+}
       h2 {
         text-align: center;
         font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -41,6 +45,9 @@
       </div>
       <div class="chart-item">
         <canvas id="ImplQuotaChart"></canvas>
+      </div>
+      <div class="chart-item full-width-chart">
+        <canvas id="WeeklyPrivacyLossChart" width="800" height="300"></canvas>
       </div>
     </div>
   </body>
