@@ -1,3 +1,41 @@
+import {
+  savePendingEvent,
+  saveReportCall,
+  getAllPendingEvents,
+  getAllReportCalls,
+  formatDate,
+} from "./indexedDB.js";
+
+// New addMockEvent function that saves to DB
+function addMockEvent(epoch, sourceUri, triggerUris) {
+  navigator.privateAttribution.addMockEvent(
+    epoch,
+    sourceUri,
+    triggerUris,
+    triggerUris
+  );
+
+  savePendingEvent({
+    epoch,
+    source: sourceUri,
+    trigger: triggerUris,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+// New computeReport function that saves to DB
+function computeReport(triggerUri, sourceUris) {
+  navigator.privateAttribution.computeReportFor(triggerUri, sourceUris, [
+    triggerUri,
+  ]);
+
+  saveReportCall({
+    trigger: triggerUri,
+    sources: sourceUris,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 // hard-coded to match pdslib-firefox's capacities
 const FILTER_CAPACITIES = {
   Nc: 1.0,
@@ -91,9 +129,13 @@ const getEpochNow = () => {
 };
 
 const drawCollusionChart = () => {
-  const ncWebsites = ["www.nike.com", "www.toys.com", "www.amazon.com",
+  const ncWebsites = [
+    "www.nike.com",
+    "www.toys.com",
+    "www.amazon.com",
     "www.bestbuy.com",
-    "www.target.com"];
+    "www.target.com",
+  ];
   const epochNow = getEpochNow();
 
   const cValue =
@@ -104,7 +146,7 @@ const drawCollusionChart = () => {
   };
 
   const rightValues = {};
-  for (website of ncWebsites) {
+  for (const website of ncWebsites) {
     const baseUrl = website.replace("www.", "");
     const label = `per-site[${baseUrl}]`;
 
@@ -127,12 +169,16 @@ const drawCollusionChart = () => {
 
 const drawConvQuotaChart = () => {
   const epochNow = getEpochNow();
-  const qConvWebsites = ["www.nike.com", "www.toys.com", "www.amazon.com",
+  const qConvWebsites = [
+    "www.nike.com",
+    "www.toys.com",
+    "www.amazon.com",
     "www.bestbuy.com",
-    "www.target.com"];
+    "www.target.com",
+  ];
 
   const leftValues = {};
-  for (website of qConvWebsites) {
+  for (const website of qConvWebsites) {
     const baseUrl = website.replace("www.", "");
     const label = `conv-quota[${baseUrl}]`;
 
@@ -155,13 +201,16 @@ const drawConvQuotaChart = () => {
 
 const drawImplQuotaChart = () => {
   const epochNow = getEpochNow();
-  const qImplWebsites = ["www.nytimes.com", "www.blog.com",
+  const qImplWebsites = [
+    "www.nytimes.com",
+    "www.blog.com",
     "www.cnn.com",
     "www.techcrunch.com",
-    "www.reddit.com"];
+    "www.reddit.com",
+  ];
 
   const rightValues = {};
-  for (website of qImplWebsites) {
+  for (const website of qImplWebsites) {
     const baseUrl = website.replace("www.", "");
     const label = `impl-quota[${baseUrl}]`;
 
@@ -182,41 +231,62 @@ const drawImplQuotaChart = () => {
   );
 };
 
+function weightedRandom(items, weights) {
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  const threshold = Math.random() * total;
+  let runningTotal = 0;
 
+  for (let i = 0; i < items.length; i++) {
+    runningTotal += weights[i];
+    if (runningTotal >= threshold) return items[i];
+  }
+}
 
-const generateMockEvents = (weeksToShow = 4) => {
+const generateRealisticMockEvents = (weeksToShow = 4) => {
   const sourceUris = [
-    "www.nytimes.com", "www.blog.com", "www.cnn.com",
-    "www.techcrunch.com", "www.reddit.com", "www.medium.com", "www.quora.com"
+    "www.nytimes.com",
+    "www.blog.com",
+    "www.cnn.com",
+    "www.techcrunch.com",
+    "www.reddit.com",
+    "www.medium.com",
+    "www.quora.com",
   ];
 
   const triggerUris = [
-    "www.nike.com", "www.toys.com", "www.amazon.com",
-    "www.bestbuy.com", "www.target.com", "www.homedepot.com",
-    "www.sephora.com", "www.etsy.com"
+    "www.amazon.com",
+    "www.nike.com",
+    "www.bestbuy.com",
+    "www.toys.com",
+    "www.homedepot.com",
+    "www.sephora.com",
+    "www.etsy.com",
   ];
 
-  const epochNow = getEpochNow();
+  const sourceWeights = [5, 1, 4, 2, 5, 2, 2]; // Reddit, NYT heavier
+  const triggerWeights = [6, 5, 5, 2, 4, 3, 2]; // Amazon, Nike, BestBuy heavier
 
-  navigator.privateAttribution.clearEvents();  // Clear before generating
+  const epochNow = getEpochNow();
+  navigator.privateAttribution.clearEvents();
 
   for (let weekOffset = 0; weekOffset < weeksToShow; weekOffset++) {
     const epoch = epochNow - weekOffset;
 
-    const eventsCount = weekOffset === 0 ? 10 : 5;
+    const weekdayBoost = weekOffset === 0 ? 2 : 1; // more events current week
+    const eventsCount = (weekOffset % 2 === 0 ? 10 : 5) * weekdayBoost;
 
     for (let i = 0; i < eventsCount; i++) {
-      const sourceUri = sourceUris[Math.floor(Math.random() * sourceUris.length)];
-      const triggerUri = triggerUris[Math.floor(Math.random() * triggerUris.length)];
-
-      navigator.privateAttribution.addMockEvent(epoch, sourceUri, [triggerUri], [triggerUri]);
+      const sourceUri = weightedRandom(sourceUris, sourceWeights);
+      const triggerUri = weightedRandom(triggerUris, triggerWeights);
+      addMockEvent(epoch, sourceUri, [triggerUri]);
     }
 
     for (const triggerUri of triggerUris) {
-      navigator.privateAttribution.computeReportFor(triggerUri, sourceUris, [triggerUri]);
+      computeReport(triggerUri, sourceUris);
     }
   }
 };
+
 const getEpochDateRange = (epoch) => {
   const startDate = new Date(epoch * EPOCH_DURATION);
   const endDate = new Date(startDate.getTime() + EPOCH_DURATION - 1);
@@ -247,64 +317,142 @@ const drawWeeklyPrivacyLossChart = () => {
 
     if (i === 0) {
       // Current week - real data
-      ncData.push(FILTER_CAPACITIES["Nc"] - navigator.privateAttribution.getBudget("Nc", epoch, "www.nike.com"));
-      cData.push(FILTER_CAPACITIES["C"] - navigator.privateAttribution.getBudget("C", epoch, ""));
-      qTriggerData.push(FILTER_CAPACITIES["QTrigger"] - navigator.privateAttribution.getBudget("QTrigger", epoch, "www.nike.com"));
-      qSourceData.push(FILTER_CAPACITIES["QSource"] - navigator.privateAttribution.getBudget("QSource", epoch, "www.nytimes.com"));
+      ncData.push(
+        FILTER_CAPACITIES["Nc"] -
+          navigator.privateAttribution.getBudget("Nc", epoch, "www.nike.com")
+      );
+      cData.push(
+        FILTER_CAPACITIES["C"] -
+          navigator.privateAttribution.getBudget("C", epoch, "")
+      );
+      qTriggerData.push(
+        FILTER_CAPACITIES["QTrigger"] -
+          navigator.privateAttribution.getBudget(
+            "QTrigger",
+            epoch,
+            "www.nike.com"
+          )
+      );
+      qSourceData.push(
+        FILTER_CAPACITIES["QSource"] -
+          navigator.privateAttribution.getBudget(
+            "QSource",
+            epoch,
+            "www.nytimes.com"
+          )
+      );
     } else {
       // Past weeks - simulate realistic data
       ncData.push((Math.random() * FILTER_CAPACITIES["Nc"]).toFixed(2));
       cData.push((Math.random() * FILTER_CAPACITIES["C"]).toFixed(2));
-      qTriggerData.push((Math.random() * FILTER_CAPACITIES["QTrigger"]).toFixed(2));
-      qSourceData.push((Math.random() * FILTER_CAPACITIES["QSource"]).toFixed(2));
+      qTriggerData.push(
+        (Math.random() * FILTER_CAPACITIES["QTrigger"]).toFixed(2)
+      );
+      qSourceData.push(
+        (Math.random() * FILTER_CAPACITIES["QSource"]).toFixed(2)
+      );
     }
   }
 
-  const ctx = document.getElementById("WeeklyPrivacyLossChart").getContext("2d");
+  const ctx = document
+    .getElementById("WeeklyPrivacyLossChart")
+    .getContext("2d");
 
-  const maxY = Math.max(...ncData, ...cData, ...qTriggerData, ...qSourceData) + 1;
+  const maxY =
+    Math.max(...ncData, ...cData, ...qTriggerData, ...qSourceData) + 1;
 
   new Chart(ctx, {
-    type: 'bar',
+    type: "bar",
     data: {
       labels: labels,
       datasets: [
-        { label: 'nc-filter', data: ncData, backgroundColor: '#4F81BD' },
-        { label: 'c-filter', data: cData, backgroundColor: '#5DA5DA' },
-        { label: 'q-trigger', data: qTriggerData, backgroundColor: '#60BD68' },
-        { label: 'q-source', data: qSourceData, backgroundColor: '#B2E061' }
-      ]
+        { label: "nc-filter", data: ncData, backgroundColor: "#4F81BD" },
+        { label: "c-filter", data: cData, backgroundColor: "#5DA5DA" },
+        { label: "q-trigger", data: qTriggerData, backgroundColor: "#60BD68" },
+        { label: "q-source", data: qSourceData, backgroundColor: "#B2E061" },
+      ],
     },
     options: {
       responsive: false,
       plugins: {
         title: {
           display: true,
-          text: 'Privacy Loss per Week'
-        }
+          text: "Privacy Loss per Week",
+        },
       },
       scales: {
         y: {
           beginAtZero: true,
           max: maxY,
-          title: { display: true, text: "Privacy Loss" }
+          title: { display: true, text: "Privacy Loss" },
         },
         x: {
-          title: { display: true, text: "Week" }
-        }
-      }
-    }
+          title: { display: true, text: "Week" },
+        },
+      },
+    },
   });
 };
 
+async function renderTransparencyDashboard() {
+  const pendingEvents = await getAllPendingEvents();
+  const reportCalls = await getAllReportCalls();
+  pendingEvents.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  reportCalls.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+  const pendingTable = document.getElementById("pending-events-body");
+  pendingTable.innerHTML = pendingEvents
+    .map(
+      (ev) => `
+    <tr>
+      <td>${ev.epoch}</td>
+      <td>${ev.source}</td>
+      <td>${ev.trigger.join(", ")}</td>
+    </tr>
+  `
+    )
+    .join("");
+
+  const reportTable = document.getElementById("report-calls-body");
+  reportTable.innerHTML = reportCalls
+    .map(
+      (rep) => `
+    <tr>
+      <td>${formatDate(rep.timestamp)}</td>
+      <td>${rep.trigger}</td>
+      <td>${rep.sources.join(", ")}</td>
+    </tr>
+  `
+    )
+    .join("");
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   navigator.privateAttribution.clearEvents();
 
-  generateMockEvents(4);
+  generateRealisticMockEvents(4);
   drawCollusionChart();
   drawConvQuotaChart();
   drawImplQuotaChart();
 
   drawWeeklyPrivacyLossChart();
+  renderTransparencyDashboard();
+});
+
+const tabButtons = document.querySelectorAll(".tab-button");
+const chartItems = document.querySelectorAll(".chart-item");
+
+tabButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    // Remove active class from all buttons
+    tabButtons.forEach((btn) => btn.classList.remove("active"));
+    button.classList.add("active");
+
+    // Hide all chart items
+    chartItems.forEach((item) => item.classList.remove("active"));
+
+    // Show the selected chart item
+    const targetId = button.dataset.target;
+    document.getElementById(targetId).classList.add("active");
+  });
 });
