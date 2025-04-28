@@ -217,13 +217,6 @@ const generateMockEvents = (weeksToShow = 4) => {
     }
   }
 };
-
-
-
-
-
-
-
 const getEpochDateRange = (epoch) => {
   const startDate = new Date(epoch * EPOCH_DURATION);
   const endDate = new Date(startDate.getTime() + EPOCH_DURATION - 1);
@@ -306,15 +299,12 @@ const drawWeeklyPrivacyLossChart = () => {
 
 
 document.addEventListener("DOMContentLoaded", async () => {
-  navigator.privateAttribution.clearEvents();   // Clear once
+  navigator.privateAttribution.clearEvents();
 
-  generateMockEvents(4);   // Generate events for current + past 3 weeks
-
-  // First three charts focus on current week
+  generateMockEvents(4);
   drawCollusionChart();
   drawConvQuotaChart();
   drawImplQuotaChart();
 
-  // Weekly chart reads across past 4 epochs
   drawWeeklyPrivacyLossChart();
 });
