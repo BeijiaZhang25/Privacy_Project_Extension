@@ -1,4 +1,4 @@
-// hard-coded to match pdslib-firefox's capacities
+// == Constants ==
 const FILTER_CAPACITIES = {
   Nc: 1.0,
   C: 8.0,
@@ -6,262 +6,122 @@ const FILTER_CAPACITIES = {
   QSource: 4.0,
 };
 
-// == graph utils ==
-const drawChart = (
-  canvasId,
-  xAxisTitle,
-  leftData,
-  leftColor,
-  leftLineY,
-  rightData,
-  rightColor,
-  rightLineY
-) => {
+const DAY_IN_MILLI = 1000 * 60 * 60 * 24;
+const EPOCH_DURATION = 7 * DAY_IN_MILLI;
+const WEEKS_TO_SHOW = 4;
+
+// == Epoch Utils ==
+const getEpochNow = () => Math.floor(Date.now() / EPOCH_DURATION);
+
+const getEpochDateRange = (epoch) => {
+  const startDate = new Date(epoch * EPOCH_DURATION);
+  const endDate = new Date(startDate.getTime() + EPOCH_DURATION - 1);
+  const formatDate = (date) => `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+  return { firstDateStr: formatDate(startDate), lastDateStr: formatDate(endDate) };
+};
+
+// == Graph Utils ==
+const drawChart = (canvasId, xAxisTitle, leftData, leftColor, leftLineY, rightData, rightColor, rightLineY) => {
   const ctx = document.getElementById(canvasId).getContext("2d");
-
-  const leftKeys = Object.keys(leftData);
-  const leftValues = Object.values(leftData);
-  const rightKeys = Object.keys(rightData);
-  const rightValues = Object.values(rightData);
-
-  const colors = [];
-  for (let i = 0; i < leftValues.length; i++) {
-    colors.push(leftColor);
-  }
-  for (let i = 0; i < rightValues.length; i++) {
-    colors.push(rightColor);
-  }
-
-  const allKeys = [...leftKeys, ...rightKeys];
-  const allValues = [...leftValues, ...rightValues];
-
-  const dataset = {
-    label: "Privacy Loss",
-    data: allValues,
-    backgroundColor: colors,
-  };
+  const allKeys = [...Object.keys(leftData), ...Object.keys(rightData)];
+  const allValues = [...Object.values(leftData), ...Object.values(rightData)];
+  const colors = [...Array(Object.keys(leftData).length).fill(leftColor), ...Array(Object.keys(rightData).length).fill(rightColor)];
 
   new Chart(ctx, {
     type: "bar",
-    data: { labels: allKeys, datasets: [dataset] },
+    data: { labels: allKeys, datasets: [{ label: "Privacy Loss", data: allValues, backgroundColor: colors }] },
     options: {
       responsive: true,
       plugins: {
         legend: { display: false },
         annotation: {
           annotations: {
-            line1: {
-              type: "line",
-              yMin: leftLineY,
-              yMax: leftLineY,
-              borderColor: leftColor,
-              borderWidth: 2,
-            },
-            line2: {
-              type: "line",
-              yMin: rightLineY,
-              yMax: rightLineY,
-              borderColor: rightColor,
-              borderWidth: 2,
-            },
+            line1: { type: "line", yMin: leftLineY, yMax: leftLineY, borderColor: leftColor, borderWidth: 2 },
+            line2: { type: "line", yMin: rightLineY, yMax: rightLineY, borderColor: rightColor, borderWidth: 2 },
           },
         },
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          max: Math.max(leftLineY, rightLineY),
-          title: { display: true, text: "Privacy Loss" },
-        },
-        x: {
-          title: { display: true, text: xAxisTitle },
-        },
+        y: { beginAtZero: true, max: Math.max(leftLineY, rightLineY), title: { display: true, text: "Privacy Loss" } },
+        x: { title: { display: true, text: xAxisTitle } },
       },
     },
   });
 };
 
-// == epoch utils ==
-const DAY_IN_MILLI = 1000 * 60 * 60 * 24;
-const EPOCH_DURATION = 7 * DAY_IN_MILLI;
+// == Historical Data Generation ==
+const generateHistoricalMockData = () => {
+  if (localStorage.getItem("historicalDataGenerated")) return;
 
-const getEpochNow = () => {
-  const now = Date.now();
-  return Math.floor(now / EPOCH_DURATION);
-};
-
-const drawCollusionChart = () => {
-  const ncWebsites = ["www.nike.com", "www.toys.com", "www.amazon.com",
-    "www.bestbuy.com",
-    "www.target.com"];
+  const sourceUris = ["www.nytimes.com", "www.blog.com", "www.cnn.com", "www.techcrunch.com", "www.reddit.com"];
+  const triggerUris = ["www.nike.com", "www.toys.com", "www.amazon.com", "www.bestbuy.com", "www.target.com"];
   const epochNow = getEpochNow();
 
-  const cValue =
-    FILTER_CAPACITIES["C"] -
-    navigator.privateAttribution.getBudget("C", epochNow, "");
-  const leftValues = {
-    global: cValue,
-  };
-
-  const rightValues = {};
-  for (website of ncWebsites) {
-    const baseUrl = website.replace("www.", "");
-    const label = `per-site[${baseUrl}]`;
-
-    rightValues[label] =
-      FILTER_CAPACITIES["Nc"] -
-      navigator.privateAttribution.getBudget("Nc", epochNow, website);
-  }
-
-  drawChart(
-    "CollusionChart",
-    "Privacy Filters",
-    leftValues,
-    "red",
-    FILTER_CAPACITIES["C"],
-    rightValues,
-    "blue",
-    FILTER_CAPACITIES["Nc"]
-  );
-};
-
-const drawConvQuotaChart = () => {
-  const epochNow = getEpochNow();
-  const qConvWebsites = ["www.nike.com", "www.toys.com", "www.amazon.com",
-    "www.bestbuy.com",
-    "www.target.com"];
-
-  const leftValues = {};
-  for (website of qConvWebsites) {
-    const baseUrl = website.replace("www.", "");
-    const label = `conv-quota[${baseUrl}]`;
-
-    leftValues[label] =
-      FILTER_CAPACITIES["QTrigger"] -
-      navigator.privateAttribution.getBudget("QTrigger", epochNow, website);
-  }
-
-  drawChart(
-    "ConvQuotaChart",
-    "Conversion Quota",
-    leftValues,
-    "orange",
-    FILTER_CAPACITIES["QTrigger"],
-    {},
-    "transparent",
-    0
-  );
-};
-
-const drawImplQuotaChart = () => {
-  const epochNow = getEpochNow();
-  const qImplWebsites = ["www.nytimes.com", "www.blog.com",
-    "www.cnn.com",
-    "www.techcrunch.com",
-    "www.reddit.com"];
-
-  const rightValues = {};
-  for (website of qImplWebsites) {
-    const baseUrl = website.replace("www.", "");
-    const label = `impl-quota[${baseUrl}]`;
-
-    rightValues[label] =
-      FILTER_CAPACITIES["QSource"] -
-      navigator.privateAttribution.getBudget("QSource", epochNow, website);
-  }
-
-  drawChart(
-    "ImplQuotaChart",
-    "Impression Quota",
-    {},
-    "transparent",
-    0,
-    rightValues,
-    "purple",
-    FILTER_CAPACITIES["QSource"]
-  );
-};
-
-
-
-const generateMockEvents = (weeksToShow = 4) => {
-  const sourceUris = [
-    "www.nytimes.com", "www.blog.com", "www.cnn.com",
-    "www.techcrunch.com", "www.reddit.com", "www.medium.com", "www.quora.com"
-  ];
-
-  const triggerUris = [
-    "www.nike.com", "www.toys.com", "www.amazon.com",
-    "www.bestbuy.com", "www.target.com", "www.homedepot.com",
-    "www.sephora.com", "www.etsy.com"
-  ];
-
-  const epochNow = getEpochNow();
-
-  navigator.privateAttribution.clearEvents();  // Clear before generating
-
-  for (let weekOffset = 0; weekOffset < weeksToShow; weekOffset++) {
+  for (let weekOffset = 1; weekOffset < WEEKS_TO_SHOW; weekOffset++) {
     const epoch = epochNow - weekOffset;
-
-    const eventsCount = weekOffset === 0 ? 10 : 5;
-
-    for (let i = 0; i < eventsCount; i++) {
+    navigator.privateAttribution.clearEvents();
+    for (let i = 0; i < 5; i++) {
       const sourceUri = sourceUris[Math.floor(Math.random() * sourceUris.length)];
       const triggerUri = triggerUris[Math.floor(Math.random() * triggerUris.length)];
-
       navigator.privateAttribution.addMockEvent(epoch, sourceUri, [triggerUri], [triggerUri]);
     }
-
-    for (const triggerUri of triggerUris) {
-      navigator.privateAttribution.computeReportFor(triggerUri, sourceUris, [triggerUri]);
-    }
+    triggerUris.forEach(triggerUri => navigator.privateAttribution.computeReportFor(triggerUri, sourceUris, [triggerUri]));
+    savePrivacyLossForEpoch(epoch);
   }
-};
-const getEpochDateRange = (epoch) => {
-  const startDate = new Date(epoch * EPOCH_DURATION);
-  const endDate = new Date(startDate.getTime() + EPOCH_DURATION - 1);
 
-  const formatDate = (date) =>
-    `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
-
-  return {
-    firstDateStr: formatDate(startDate),
-    lastDateStr: formatDate(endDate),
-  };
+  localStorage.setItem("historicalDataGenerated", true);
 };
 
-const drawWeeklyPrivacyLossChart = () => {
-  const weeksToShow = 4;
+// == Current Week Data ==
+const generateCurrentWeekData = () => {
+  const sourceUris = ["www.nytimes.com", "www.blog.com", "www.cnn.com", "www.techcrunch.com", "www.reddit.com"];
+  const triggerUris = ["www.nike.com", "www.toys.com", "www.amazon.com", "www.bestbuy.com", "www.target.com"];
   const epochNow = getEpochNow();
 
-  const labels = [];
-  const ncData = [];
-  const cData = [];
-  const qTriggerData = [];
-  const qSourceData = [];
+  navigator.privateAttribution.clearEvents();
+  for (let i = 0; i < 10; i++) {
+    const sourceUri = sourceUris[Math.floor(Math.random() * sourceUris.length)];
+    const triggerUri = triggerUris[Math.floor(Math.random() * triggerUris.length)];
+    navigator.privateAttribution.addMockEvent(epochNow, sourceUri, [triggerUri], [triggerUri]);
+  }
+  triggerUris.forEach(triggerUri => navigator.privateAttribution.computeReportFor(triggerUri, sourceUris, [triggerUri]));
+  savePrivacyLossForEpoch(epochNow);
+};
 
-  for (let i = weeksToShow - 1; i >= 0; i--) {
+// == Save Privacy Loss ==
+const savePrivacyLossForEpoch = (epoch) => {
+  const data = {
+    Nc: (FILTER_CAPACITIES["Nc"] - navigator.privateAttribution.getBudget("Nc", epoch, "www.nike.com")).toFixed(2),
+    C: (FILTER_CAPACITIES["C"] - navigator.privateAttribution.getBudget("C", epoch, "")).toFixed(2),
+    QTrigger: (FILTER_CAPACITIES["QTrigger"] - navigator.privateAttribution.getBudget("QTrigger", epoch, "www.nike.com")).toFixed(2),
+    QSource: (FILTER_CAPACITIES["QSource"] - navigator.privateAttribution.getBudget("QSource", epoch, "www.nytimes.com")).toFixed(2)
+  };
+  let history = JSON.parse(localStorage.getItem("privacyLossHistory")) || {};
+  history[epoch] = data;
+  localStorage.setItem("privacyLossHistory", JSON.stringify(history));
+};
+
+// == Weekly Chart ==
+const drawWeeklyPrivacyLossChart = () => {
+  const epochNow = getEpochNow();
+  const history = JSON.parse(localStorage.getItem("privacyLossHistory")) || {};
+
+  const labels = [];
+  const ncData = [], cData = [], qTriggerData = [], qSourceData = [];
+
+  for (let i = WEEKS_TO_SHOW - 1; i >= 0; i--) {
     const epoch = epochNow - i;
     const { firstDateStr, lastDateStr } = getEpochDateRange(epoch);
     labels.push(`${firstDateStr} - ${lastDateStr}`);
 
-    if (i === 0) {
-      // Current week - real data
-      ncData.push(FILTER_CAPACITIES["Nc"] - navigator.privateAttribution.getBudget("Nc", epoch, "www.nike.com"));
-      cData.push(FILTER_CAPACITIES["C"] - navigator.privateAttribution.getBudget("C", epoch, ""));
-      qTriggerData.push(FILTER_CAPACITIES["QTrigger"] - navigator.privateAttribution.getBudget("QTrigger", epoch, "www.nike.com"));
-      qSourceData.push(FILTER_CAPACITIES["QSource"] - navigator.privateAttribution.getBudget("QSource", epoch, "www.nytimes.com"));
-    } else {
-      // Past weeks - simulate realistic data
-      ncData.push((Math.random() * FILTER_CAPACITIES["Nc"]).toFixed(2));
-      cData.push((Math.random() * FILTER_CAPACITIES["C"]).toFixed(2));
-      qTriggerData.push((Math.random() * FILTER_CAPACITIES["QTrigger"]).toFixed(2));
-      qSourceData.push((Math.random() * FILTER_CAPACITIES["QSource"]).toFixed(2));
-    }
+    const data = history[epoch] || { Nc: 0, C: 0, QTrigger: 0, QSource: 0 };
+    ncData.push(data.Nc);
+    cData.push(data.C);
+    qTriggerData.push(data.QTrigger);
+    qSourceData.push(data.QSource);
   }
 
   const ctx = document.getElementById("WeeklyPrivacyLossChart").getContext("2d");
-
   const maxY = Math.max(...ncData, ...cData, ...qTriggerData, ...qSourceData) + 1;
 
   new Chart(ctx, {
@@ -277,34 +137,56 @@ const drawWeeklyPrivacyLossChart = () => {
     },
     options: {
       responsive: false,
-      plugins: {
-        title: {
-          display: true,
-          text: 'Privacy Loss per Week'
-        }
-      },
+      plugins: { title: { display: true, text: 'Privacy Loss per Week' } },
       scales: {
-        y: {
-          beginAtZero: true,
-          max: maxY,
-          title: { display: true, text: "Privacy Loss" }
-        },
-        x: {
-          title: { display: true, text: "Week" }
-        }
+        y: { beginAtZero: true, max: maxY, title: { display: true, text: "Privacy Loss" } },
+        x: { title: { display: true, text: "Week" } }
       }
     }
   });
 };
 
+const drawCollusionChart = () => {
+  const ncWebsites = ["www.nike.com", "www.toys.com", "www.amazon.com", "www.bestbuy.com", "www.target.com"];
+  const epochNow = getEpochNow();
+  const cValue = FILTER_CAPACITIES["C"] - navigator.privateAttribution.getBudget("C", epochNow, "");
+  const leftValues = { global: cValue };
+  const rightValues = {};
+  for (website of ncWebsites) {
+    const baseUrl = website.replace("www.", "");
+    rightValues[`per-site[${baseUrl}]`] = FILTER_CAPACITIES["Nc"] - navigator.privateAttribution.getBudget("Nc", epochNow, website);
+  }
+  drawChart("CollusionChart", "Privacy Filters", leftValues, "red", FILTER_CAPACITIES["C"], rightValues, "blue", FILTER_CAPACITIES["Nc"]);
+};
 
-document.addEventListener("DOMContentLoaded", async () => {
-  navigator.privateAttribution.clearEvents();
+const drawConvQuotaChart = () => {
+  const epochNow = getEpochNow();
+  const qConvWebsites = ["www.nike.com", "www.toys.com", "www.amazon.com", "www.bestbuy.com", "www.target.com"];
+  const leftValues = {};
+  for (website of qConvWebsites) {
+    const baseUrl = website.replace("www.", "");
+    leftValues[`conv-quota[${baseUrl}]`] = FILTER_CAPACITIES["QTrigger"] - navigator.privateAttribution.getBudget("QTrigger", epochNow, website);
+  }
+  drawChart("ConvQuotaChart", "Conversion Quota", leftValues, "orange", FILTER_CAPACITIES["QTrigger"], {}, "transparent", 0);
+};
 
-  generateMockEvents(4);
+const drawImplQuotaChart = () => {
+  const epochNow = getEpochNow();
+  const qImplWebsites = ["www.nytimes.com", "www.blog.com", "www.cnn.com", "www.techcrunch.com", "www.reddit.com"];
+  const rightValues = {};
+  for (website of qImplWebsites) {
+    const baseUrl = website.replace("www.", "");
+    rightValues[`impl-quota[${baseUrl}]`] = FILTER_CAPACITIES["QSource"] - navigator.privateAttribution.getBudget("QSource", epochNow, website);
+  }
+  drawChart("ImplQuotaChart", "Impression Quota", {}, "transparent", 0, rightValues, "purple", FILTER_CAPACITIES["QSource"]);
+};
+
+// == Init ==
+document.addEventListener("DOMContentLoaded", () => {
+  generateHistoricalMockData();
+  generateCurrentWeekData();
+  drawWeeklyPrivacyLossChart();
   drawCollusionChart();
   drawConvQuotaChart();
   drawImplQuotaChart();
-
-  drawWeeklyPrivacyLossChart();
 });
