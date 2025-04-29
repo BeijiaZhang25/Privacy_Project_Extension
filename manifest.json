@@ -1,17 +1,24 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Privacy Loss Dashboard",
   "version": "1.2",
   "description": "Visualize weekly privacy losses across filter types.",
-  "browser_action": {
+  "action": {
     "default_popup": "popup.html",
     "default_title": "Open Dashboard"
   },
-  "permissions": ["tabs", "storage"],
+  "permissions": ["storage"],
+  "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["contentScript.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["generateData.js", "drawChart.js", "const.js", "epoch.js"],
+      "matches": ["<all_urls>"]
     }
   ]
 }
