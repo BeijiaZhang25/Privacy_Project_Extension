@@ -4,50 +4,122 @@
     <title>Privacy Loss Dashboard</title>
     <script src="chart.js"></script>
     <script src="chartjs-plugin-annotation.min.js"></script>
-    <script src="popup.js" defer></script>
+    <script src="popup.js" type="module"></script>
     <style>
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+      }
+      th {
+        background-color: #f2f2f2;
+        text-align: left;
+      }
+      tr:nth-child(even) {
+        background-color: #fafafa;
+      }
+
       canvas {
-    display: block;
-  }
+        display: block;
+      }
       body {
-        font-family: Arial, sans-serif;
+        font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
         padding: 15px;
         width: 900px;
         max-height: 700px;
         overflow: auto;
+        background: #f9fafb;
+      }
+      h2 {
+        text-align: center;
+        font-weight: 300;
+        margin-bottom: 20px;
+      }
+      #tabButtons {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .tab-button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 8px;
+        background: #ddd;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .tab-button.active {
+        background: #4285f4;
+        color: white;
       }
       #chartContainer {
         display: flex;
-        flex-wrap: wrap;
-        justify-content: space-around;
-        width: 100%;
+        flex-direction: column;
+        align-items: center;
       }
       .chart-item {
-    min-width: 45%;
-    margin-bottom: 20px;
-    text-align: center;
-}
-      h2 {
-        text-align: center;
-        font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
-        font-weight: 300;
+        display: none; /* Hide all charts by default */
+        width: 90%;
+      }
+      .chart-item.active {
+        display: block; /* Only the active chart is shown */
       }
     </style>
   </head>
   <body>
-    <h2>Privacy loss this week:</h2>
+    <h2>Privacy Loss This Week</h2>
+
+    <div id="tabButtons">
+      <button class="tab-button active"
+        data-target="CollusionChartContainer">Collusion</button>
+      <button class="tab-button"
+        data-target="ConvQuotaChartContainer">Conversion Quota</button>
+      <button class="tab-button"
+        data-target="ImplQuotaChartContainer">Impression Quota</button>
+      <button class="tab-button"
+        data-target="WeeklyPrivacyLossChartContainer">Weekly View</button>
+      <button class="tab-button"
+        data-target="TransparencyTab">Transparency</button> <!-- ✅ ADD THIS -->
+    </div>
+
     <div id="chartContainer">
-      <div class="chart-item">
+      <div id="CollusionChartContainer" class="chart-item active">
         <canvas id="CollusionChart"></canvas>
       </div>
-      <div class="chart-item">
+      <div id="ConvQuotaChartContainer" class="chart-item">
         <canvas id="ConvQuotaChart"></canvas>
       </div>
-      <div class="chart-item">
+      <div id="ImplQuotaChartContainer" class="chart-item">
         <canvas id="ImplQuotaChart"></canvas>
       </div>
-      <div class="chart-item full-width-chart">
+      <div id="WeeklyPrivacyLossChartContainer" class="chart-item">
         <canvas id="WeeklyPrivacyLossChart" width="800" height="300"></canvas>
+      </div>
+
+      <!-- ✅ ADD THIS -->
+
+      <div id="TransparencyTab" class="chart-item">
+        <h3>Pending Events</h3>
+        <table>
+          <thead>
+            <tr><th>Epoch</th><th>Source</th><th>Trigger</th></tr>
+          </thead>
+          <tbody id="pending-events-body"></tbody>
+        </table>
+
+        <h3>Reports</h3>
+        <table>
+          <thead>
+            <tr><th>Timestamp</th><th>Trigger</th><th>Sources</th></tr>
+          </thead>
+          <tbody id="report-calls-body"></tbody>
+        </table>
       </div>
     </div>
   </body>
