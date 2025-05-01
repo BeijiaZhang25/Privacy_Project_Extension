@@ -28,12 +28,11 @@
       }
       body {
         font-family: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
-        padding: 15px;
-        width: 900px;
-        max-height: 700px;
+        padding: 12px;
         overflow: auto;
         background: #f9fafb;
       }
+
       h2 {
         text-align: center;
         font-weight: 300;
@@ -70,6 +69,31 @@
       .chart-item.active {
         display: block; /* Only the active chart is shown */
       }
+      .info-icon {
+        cursor: pointer;
+        font-size: 14px;
+        border-radius: 50%;
+        border: 1px solid #ccc;
+        width: 18px;
+        height: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 6px;
+        background: #fff;
+        color: #333;
+      }
+      
+      .tooltip {
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 10px;
+        font-size: 13px;
+        border-radius: 5px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        max-width: 280px;
+        margin-top: 8px;
+      }
     </style>
   </head>
   <body>
@@ -90,6 +114,26 @@
 
     <div id="chartContainer">
       <div id="CollusionChartContainer" class="chart-item active">
+        <div class="chart-header">
+          <h3>
+            Collusion Chart
+            <span class="info-icon" title="Click to learn more">❓</span>
+          </h3>
+          <div id="CollusionInfoTooltip" class="tooltip" style="display: none;">
+            <p><strong>Collusion Chart</strong></p>
+            <p>
+              This chart shows how much privacy budget has been consumed:
+              <ul>
+                <li><strong>Global (C)</strong>: overall privacy loss from all
+                  sources</li>
+                <li><strong>Per-site (Nc)</strong>: privacy budget used by each
+                  site that stored impressions</li>
+              </ul>
+              Once budget is depleted, sites are restricted from participating
+              in future attributions.
+            </p>
+          </div>
+        </div>
         <canvas id="CollusionChart"></canvas>
       </div>
       <div id="ConvQuotaChartContainer" class="chart-item">

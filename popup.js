@@ -24,7 +24,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 const tabButtons = document.querySelectorAll(".tab-button");
 const chartItems = document.querySelectorAll(".chart-item");
+const icon = document.querySelector(".info-icon");
+const tooltip = document.getElementById("CollusionInfoTooltip");
 
+if (icon && tooltip) {
+  icon.addEventListener("click", () => {
+    tooltip.style.display = tooltip.style.display === "none" ? "block" : "none";
+  });
+}
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => {
     // Remove active class from all buttons
